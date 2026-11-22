@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated vector database
+db/
+
+# Source documents (may contain private/project-internal content)
+docs/
