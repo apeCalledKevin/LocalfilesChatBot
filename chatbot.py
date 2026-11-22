@@ -26,7 +26,7 @@ CHUNK_OVERLAP = 200 # Chars shared between chunks. Prevents key ideas from being
 SYSTEM_PROMPT = (
     "Du bist ein Assistent für technische Dokumentation. "
     "Beantworte die Frage ausschließlich anhand des folgenden Kontexts. "
-    "Wenn die Antwort nicht im Kontext steht, sag ehrlich, dass du es nicht weißt."
+    "Wenn die Antwort nicht im Kontext steht, sag ehrlich, dass du es nicht weißt. "
     "Antworte auf Deutsch und knapp."
 )
 

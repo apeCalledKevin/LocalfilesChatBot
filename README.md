@@ -177,3 +177,15 @@ All settings are constants at the top of `chatbot.py`:
 - Containerize with Docker
 - Automatic re-indexing when files in `docs/` change
 - Conversation memory for follow-up questions
+
+---
+
+## 🙏 Acknowledgements
+
+The retrieval core (document loading, ChromaDB indexing and the retrieval middleware) is based on the freeCodeCamp tutorial
+[Build a Private RAG Q&A AI Agent for Your Documents Using LangChain](https://www.freecodecamp.org/news/build-a-private-rag-qa-ai-agent-for-your-documents-using-langchain/).
+
+My own additions on top of it:
+- REST API with FastAPI, including Pydantic request/response models
+- Agent and vector store initialised once at server start via FastAPI's lifespan handler
+- Adapted to German-language technical documentation and a custom system prompt
