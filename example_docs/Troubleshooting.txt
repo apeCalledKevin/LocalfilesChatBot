@@ -1,0 +1,27 @@
+FEHLERBEHEBUNG / BEKANNTE PROBLEME
+(Beispieldokument für den Local RAG Chatbot. Das Projekt ist fiktiv und dient nur zum Testen.)
+
+Problem 1: Kamera wird nicht erkannt ("no cameras available")
+Ursache: Flachbandkabel falsch herum eingesteckt oder Verriegelung nicht geschlossen.
+Lösung: Pi ausschalten, Kabel prüfen (Kontakte zur USB-/Ethernet-Seite), neu starten.
+Mit "rpicam-hello --list-cameras" prüfen, ob die Kamera gelistet wird.
+
+Problem 2: Hailo-Gerät nicht gefunden ("No Hailo device found")
+Ursache: PCIe-Kabel locker oder Treiber nicht installiert.
+Lösung: Kabel neu stecken, "sudo apt install hailo-all" ausführen und neu starten.
+Mit "lspci" prüfen, ob ein Gerät von "Hailo Technologies" angezeigt wird.
+
+Problem 3: Niedrige Bildrate (unter 15 FPS)
+Ursache: PCIe läuft nur mit Gen 2, oder der Pi drosselt wegen Überhitzung.
+Lösung: "dtparam=pciex1_gen=3" in /boot/firmware/config.txt setzen.
+Temperatur mit "vcgencmd measure_temp" prüfen; ab ca. 85 °C wird gedrosselt.
+Active Cooler muss montiert sein.
+
+Problem 4: Unterspannungswarnung ("Undervoltage detected")
+Ursache: Zu schwaches Netzteil.
+Lösung: Offizielles 27-W-USB-C-Netzteil verwenden.
+
+Problem 5: MQTT-Nachrichten kommen nicht am Server an
+Ursache: Falsche Broker-Adresse oder Port 1883 durch Firewall blockiert.
+Lösung: Broker-Adresse in config.yaml prüfen, Verbindung testen mit
+"mosquitto_sub -h <broker> -t detections/#".

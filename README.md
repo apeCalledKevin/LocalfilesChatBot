@@ -90,9 +90,18 @@ Make sure Ollama is running (tray icon on Windows).
 python -m pip install -r requirements.txt
 ```
 
-### 3. Add your documents
+### 3. Add your documents (optional)
 
 Put your `.md`, `.txt` or `.pdf` files into the `docs/` folder.
+
+**Just want to try it out?** Skip this step. If `docs/` is missing or empty, the chatbot automatically uses the bundled example documents in [`example_docs/`](example_docs/) (a fictional Raspberry Pi 5 object-detection project, written in German). Example questions:
+
+- *Warum wurde das Hailo AI HAT statt des Google Coral gewählt?*
+- *Wie wird die Kamera an den Raspberry Pi angeschlossen?*
+- *Was tun, wenn die Bildrate unter 15 FPS liegt?*
+- *Welches Netzteil wird benötigt und warum?*
+
+> When you switch from the example docs to your own documents, delete the `db/` folder so everything is re-indexed.
 
 ### 4a. Run as CLI
 
@@ -119,7 +128,8 @@ Type `exit` or press Enter on an empty line to quit.
 uvicorn chatbot:app --reload
 ```
 
-Open **http://127.0.0.1:8000/docs** for the interactive Swagger UI, or call the endpoint directly:
+Open **http://127.0.0.1:8000/docs** for the interactive Swagger UI, or call the endpoint directly
+For the interactive Swagger UI as an example expand the "POST /ask" in default and on the right "Try it out". Edit the string in question and execute:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ask \
@@ -147,6 +157,7 @@ All settings are constants at the top of `chatbot.py`:
 | Setting | Default | Description |
 |---|---|---|
 | `DOCS_DIR` | `./docs` | Folder with source documents |
+| `EXAMPLE_DOCS_DIR` | `./example_docs` | Fallback used when `DOCS_DIR` is missing or empty |
 | `DB_DIR` | `./db` | Folder for the persisted ChromaDB |
 | `CHAT_MODEL` | `qwen3.5:4b` | Ollama chat model |
 | `EMBED_MODEL` | `nomic-embed-text` | Ollama embedding model |
@@ -164,6 +175,7 @@ All settings are constants at the top of `chatbot.py`:
 .
 ├── chatbot.py          # indexing, RAG agent, CLI and FastAPI app
 ├── requirements.txt
+├── example_docs/       # bundled sample documents for a quick test
 ├── docs/               # your source documents (not tracked in git)
 └── db/                 # persisted ChromaDB (generated, not tracked in git)
 ```
@@ -172,7 +184,6 @@ All settings are constants at the top of `chatbot.py`:
 
 ## 🗺️ Possible Next Steps
 
-- Return the source documents in the API response as well
 - Simple web frontend (e.g. React) for the chat
 - Containerize with Docker
 - Automatic re-indexing when files in `docs/` change

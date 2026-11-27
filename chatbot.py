@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
 DOCS_DIR = "./docs" # Source docs folder
+EXAMPLE_DOCS_DIR = "./example_docs" # Fallback if DOCS_DIR is missing or empty (lets you test right after cloning)
 DB_DIR = "./db" # Persisted Chroma DB folder
 CHAT_MODEL = "qwen3.5:4b" # Ollama chat model
 EMBED_MODEL = "nomic-embed-text" # Ollama embedding model
@@ -39,11 +40,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+def resolve_docs_dir():
+    # Use DOCS_DIR if it contains files, otherwise fall back to the bundled example docs
+    docs_dir = Path(DOCS_DIR)
+    if docs_dir.is_dir() and any(p.is_file() for p in docs_dir.rglob("*")):
+        return docs_dir
+    print(f"No documents found in {DOCS_DIR}, using example documents from {EXAMPLE_DOCS_DIR}.")
+    return Path(EXAMPLE_DOCS_DIR)
+
+
 def load_documents():
     docs = []
 
-    # Walk all files under DOCS_DIR
-    for path in Path(DOCS_DIR).rglob("*"):
+    # Walk all files under the docs folder
+    for path in resolve_docs_dir().rglob("*"):
         # Load markdown/text files
         if path.suffix.lower() in {".md", ".txt"}:
             docs.append(Document(
@@ -109,7 +119,7 @@ class RetrieveDocumentsMiddleware(AgentMiddleware[State]):
         msg = state["messages"][-1]
         # Query text
         query = str(msg.content)
-
+        
         # Retrieve top matching chunks
         docs = self.vector_store.similarity_search(query, k=RETRIEVAL_K)
         print(f"Found {len(docs)} chunks. Adding to context and sending it to the model...")
@@ -150,15 +160,25 @@ class Question(BaseModel):              # erwartete Eingabe: {"frage": "..."}
 class Answer(BaseModel):
     question: str
     answer: str
+    docs: list[str]
 
 @app.post("/ask", response_model=Answer)
 def ask(f: Question):
     agent = app.state.agent
     result = agent.invoke({
-    "messages": [{"role": "user", "content": f.question}],
-    "context": [],
+        "messages": [{"role": "user", "content": f.question}],
+        "context": [],
     });
-    return Answer(question=f.question, answer=result['messages'][-1].content)
+
+    # Unique source files list
+    seen = set()
+    for doc in result.get("context", []):
+        source = doc.metadata.get("source", "unknown")
+        if source not in seen:
+            #print("-", source)
+            seen.add(source)
+    
+    return Answer(question=f.question, answer=result['messages'][-1].content, docs=seen)
 
 def main():
     # Build retrieval backend and agent
