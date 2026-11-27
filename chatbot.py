@@ -16,9 +16,12 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
-DOCS_DIR = "./docs" # Source docs folder
-EXAMPLE_DOCS_DIR = "./example_docs" # Fallback if DOCS_DIR is missing or empty (lets you test right after cloning)
-DB_DIR = "./db" # Persisted Chroma DB folder
+# All paths are relative to this file, so the app works no matter which folder it is started from
+BASE_DIR = Path(__file__).resolve().parent
+DOCS_DIR = BASE_DIR / "docs" # Source docs folder
+EXAMPLE_DOCS_DIR = BASE_DIR / "example_docs" # Fallback if DOCS_DIR is missing or empty (lets you test right after cloning)
+DB_DIR = BASE_DIR / "db" # Persisted Chroma DB folder
+SUPPORTED_SUFFIXES = {".md", ".txt", ".pdf"}
 CHAT_MODEL = "qwen3.5:4b" # Ollama chat model
 EMBED_MODEL = "nomic-embed-text" # Ollama embedding model
 RETRIEVAL_K = 5 # Chunks retrieved per query. Increase if answers feel incomplete
@@ -41,24 +44,27 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 def resolve_docs_dir():
-    # Use DOCS_DIR if it contains files, otherwise fall back to the bundled example docs
-    docs_dir = Path(DOCS_DIR)
-    if docs_dir.is_dir() and any(p.is_file() for p in docs_dir.rglob("*")):
-        return docs_dir
+    # Use DOCS_DIR if it contains supported files, otherwise fall back to the bundled example docs
+    if DOCS_DIR.is_dir() and any(p.suffix.lower() in SUPPORTED_SUFFIXES for p in DOCS_DIR.rglob("*")):
+        return DOCS_DIR
     print(f"No documents found in {DOCS_DIR}, using example documents from {EXAMPLE_DOCS_DIR}.")
-    return Path(EXAMPLE_DOCS_DIR)
+    return EXAMPLE_DOCS_DIR
 
 
 def load_documents():
     docs = []
+    docs_dir = resolve_docs_dir()
 
     # Walk all files under the docs folder
-    for path in resolve_docs_dir().rglob("*"):
+    for path in docs_dir.rglob("*"):
+        # Source shown to the user, e.g. "docs/ESP.md" (relative to the project folder)
+        source = path.relative_to(BASE_DIR).as_posix()
+
         # Load markdown/text files
         if path.suffix.lower() in {".md", ".txt"}:
             docs.append(Document(
                 page_content=path.read_text(encoding="utf-8", errors="ignore"),
-                metadata={"source": str(path)}
+                metadata={"source": source}
             ))
 
         # Extract text from PDFs
@@ -66,8 +72,15 @@ def load_documents():
             text = "\n".join(page.extract_text() or "" for page in PdfReader(str(path)).pages)
             docs.append(Document(
                 page_content=text,
-                metadata={"source": str(path)}
+                metadata={"source": source}
             ))
+
+    # Fail early with a clear message instead of a cryptic Chroma error on empty input
+    if not any(doc.page_content.strip() for doc in docs):
+        raise RuntimeError(
+            f"No readable .md, .txt or .pdf documents found in {docs_dir}. "
+            f"Add files to {DOCS_DIR} or check that {EXAMPLE_DOCS_DIR} exists."
+        )
 
     return docs
 
@@ -78,9 +91,9 @@ def get_vectorstore():
 
     # Reuse existing DB if present
     # Delete ./db to force a re-index after adding/changing documents OR after changing CHUNK_SIZE, CHUNK_OVERLAP, or EMBED_MODEL.
-    if Path(DB_DIR).exists():
+    if DB_DIR.exists():
         print(f"Reusing existing data {DB_DIR} for embeddings...")
-        return Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
+        return Chroma(persist_directory=str(DB_DIR), embedding_function=embeddings)
 
     docs = load_documents()
     print(f"Loaded {len(docs)} documents. Splitting...")
@@ -96,7 +109,7 @@ def get_vectorstore():
     vs = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
-        persist_directory=DB_DIR,
+        persist_directory=str(DB_DIR),
     )
     print(f"Vectorstore built with {len(chunks)} chunks.")
     return vs
